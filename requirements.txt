@@ -1,0 +1,8 @@
+kokoro
+soundfile
+fastapi
+uvicorn[standard]
+orpheus-cpp
+# Install llama-cpp-python with Metal wheels on Apple Silicon:
+#   pip install llama-cpp-python --extra-index-url https://abetlen.github.io/llama-cpp-python/whl/metal
+llama-cpp-python

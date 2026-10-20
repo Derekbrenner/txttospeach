@@ -1,0 +1,593 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>txttospeach</title>
+<style>
+  :root {
+    --bg: #f6f6f4;
+    --card: #ffffff;
+    --text: #1a1a1a;
+    --muted: #6b6b6b;
+    --accent: #4f46e5;
+    --accent-hover: #4338ca;
+    --border: #e2e2de;
+    --track: #e8e8e4;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #131316;
+      --card: #1d1d22;
+      --text: #ececf0;
+      --muted: #9a9aa3;
+      --accent: #6c63ff;
+      --accent-hover: #7d75ff;
+      --border: #2c2c33;
+      --track: #2a2a31;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    display: flex;
+    justify-content: center;
+    padding: 3rem 1rem;
+  }
+  main { width: 100%; max-width: 640px; }
+  h1 { font-size: 1.5rem; margin: 0 0 0.25rem; }
+  .subtitle { color: var(--muted); margin: 0 0 1.5rem; font-size: 0.9rem; }
+  .card {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1.25rem;
+  }
+  textarea {
+    width: 100%;
+    min-height: 160px;
+    resize: vertical;
+    padding: 0.75rem;
+    font: inherit;
+    color: inherit;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    outline: none;
+  }
+  textarea:focus { border-color: var(--accent); }
+  .controls {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.75rem;
+    align-items: center;
+    margin-top: 1rem;
+  }
+  select {
+    font: inherit;
+    color: inherit;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.5rem 0.6rem;
+    flex: 1;
+    min-width: 200px;
+  }
+  .speed { display: flex; align-items: center; gap: 0.5rem; color: var(--muted); font-size: 0.85rem; }
+  input[type="range"] { accent-color: var(--accent); width: 110px; }
+  button {
+    font: inherit;
+    font-weight: 600;
+    color: #fff;
+    background: var(--accent);
+    border: none;
+    border-radius: 8px;
+    padding: 0.6rem 1.4rem;
+    cursor: pointer;
+  }
+  button:hover:not(:disabled) { background: var(--accent-hover); }
+  button:disabled { opacity: 0.55; cursor: wait; }
+  button.secondary {
+    background: transparent;
+    color: var(--muted);
+    border: 1px solid var(--border);
+    cursor: pointer;
+  }
+  button.secondary:hover { color: var(--text); border-color: var(--muted); background: transparent; }
+  .progress-wrap { margin-top: 1rem; display: none; }
+  .progress-wrap.visible { display: block; }
+  .progress-track {
+    height: 8px;
+    background: var(--track);
+    border-radius: 4px;
+    overflow: hidden;
+  }
+  .progress-fill {
+    height: 100%;
+    width: 0%;
+    background: var(--accent);
+    border-radius: 4px;
+    transition: width 0.3s ease;
+  }
+  .progress-label {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 0.4rem;
+    font-size: 0.8rem;
+    color: var(--muted);
+    font-variant-numeric: tabular-nums;
+  }
+  audio { width: 100%; margin-top: 1rem; display: none; }
+  audio.visible { display: block; }
+  .output-actions {
+    display: none;
+    align-items: center;
+    gap: 0.6rem;
+    margin-top: 0.75rem;
+    flex-wrap: wrap;
+  }
+  .output-actions.visible { display: flex; }
+  a.btn {
+    font: inherit;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #fff;
+    background: var(--accent);
+    border-radius: 6px;
+    padding: 0.35rem 0.9rem;
+    text-decoration: none;
+  }
+  a.btn:hover { background: var(--accent-hover); }
+  a.btn.small, .output-actions button, .history-meta a.btn {
+    font-size: 0.78rem;
+    font-weight: 500;
+    padding: 0.25rem 0.7rem;
+    border-radius: 6px;
+  }
+  .output-path {
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.72rem;
+    color: var(--muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 100%;
+    flex-basis: 100%;
+  }
+  .status { margin-top: 0.75rem; font-size: 0.85rem; color: var(--muted); min-height: 1.2em; }
+  .status.error { color: #e5484d; }
+  .cheatsheet { margin-top: 2rem; }
+  .cheatsheet summary {
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--muted);
+    user-select: none;
+  }
+  .cheatsheet summary:hover { color: var(--text); }
+  .cheatsheet-body {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    padding: 1rem 1.25rem;
+    margin-top: 0.75rem;
+  }
+  .cheatsheet-body p { font-size: 0.85rem; color: var(--muted); margin: 0 0 0.75rem; }
+  .cheatsheet pre {
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: 8px;
+    padding: 0.9rem;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+    font-size: 0.75rem;
+    line-height: 1.5;
+    white-space: pre-wrap;
+    word-break: break-word;
+    max-height: 320px;
+    overflow-y: auto;
+    margin: 0 0 0.75rem;
+  }
+  .history { margin-top: 2rem; }
+  .history h2 { font-size: 1rem; margin: 0 0 0.75rem; color: var(--muted); font-weight: 600; }
+  .history-item {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 0.75rem 1rem;
+    margin-bottom: 0.6rem;
+  }
+  .history-text {
+    font-size: 0.9rem;
+    overflow: hidden;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+  }
+  .history-meta {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    margin-top: 0.5rem;
+    font-size: 0.78rem;
+    color: var(--muted);
+    flex-wrap: wrap;
+  }
+  .history-meta .spacer { flex: 1; }
+  .history-meta button {
+    padding: 0.25rem 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 500;
+    border-radius: 6px;
+  }
+  .history-empty { color: var(--muted); font-size: 0.85rem; }
+</style>
+</head>
+<body>
+<main>
+  <h1>txttospeach</h1>
+  <p class="subtitle">Local text-to-speech with Kokoro-82M — nothing leaves your machine.</p>
+  <div class="card">
+    <textarea id="text" placeholder="Type or paste something to read aloud…" autofocus></textarea>
+    <div class="controls">
+      <select id="voice"></select>
+      <label class="speed">Speed
+        <input type="range" id="speed" min="0.5" max="2" step="0.1" value="1">
+        <span id="speedValue">1.0×</span>
+      </label>
+      <button id="speak">Speak</button>
+      <button id="cancel" class="secondary" hidden>Cancel</button>
+    </div>
+    <div class="progress-wrap" id="progressWrap">
+      <div class="progress-track"><div class="progress-fill" id="progressFill"></div></div>
+      <div class="progress-label">
+        <span id="progressPct">0%</span>
+        <span id="progressEta"></span>
+      </div>
+    </div>
+    <audio id="player" controls></audio>
+    <div class="output-actions" id="outputActions">
+      <a id="downloadBtn" class="btn small" download>Download</a>
+      <button id="copyPathBtn" class="secondary">Copy path</button>
+      <code class="output-path" id="outputPath"></code>
+    </div>
+    <div id="status" class="status"></div>
+  </div>
+  <details class="cheatsheet">
+    <summary>Cheat sheet — LLM prompt for writing TTS scripts</summary>
+    <div class="cheatsheet-body">
+      <p>Paste this into any LLM so it writes text tuned for this app's speech engine.</p>
+      <pre id="cheatPrompt">You are writing text that will be narrated by a local text-to-speech app with two
+engines. I will tell you which engine the script is for; if I don't, assume Kokoro.
+Delivery is controlled entirely by how the text is written. Follow these rules
+exactly.
+
+RULES FOR BOTH ENGINES
+- Insert an explicit pause with [pause:N] where N is seconds, e.g. [pause:0.5] or
+  [pause:2]. Milliseconds also work: [pause:300ms]. Use between beats, scene
+  changes, and dramatic moments.
+- Output only the words to be spoken, plus the control tags described below.
+- No markdown headers, bullets, bold, or commentary. Plain paragraphs, one blank
+  line between them.
+
+ENGINE 1: KOKORO (narration — clean, fast, no emotion tags)
+
+PAUSES &amp; PACING
+- Insert an explicit pause with [pause:N] where N is seconds, e.g. [pause:0.5] or
+  [pause:2]. Milliseconds also work: [pause:300ms]. Use between beats, scene
+  changes, and dramatic moments.
+- Punctuation controls small pauses: comma = short beat, semicolon = breath,
+  period = full stop, "…" = hesitation or trailing off, " — " = dramatic
+  mid-sentence beat.
+- Short sentences read punchy. Long unpunctuated sentences read rushed and flat.
+
+EMPHASIS &amp; INTONATION
+- Raise emphasis on a word with [word](+1), stronger with [word](+2). Lower it
+  with [word](-1) or [word](-2). Example: I [never](+1) said that.
+- +2/-2 work best on short words. Use emphasis sparingly — at most one word per
+  sentence.
+- "?" gives rising intonation; "!" adds energy. Don't stack them.
+- Do NOT use ALL CAPS or *asterisks* for emphasis; they don't work.
+
+PRONUNCIATION
+- Force exact pronunciation with IPA-style phonemes in link syntax:
+  [Kokoro](/kˈOkəɹO/). Use for invented names, foreign words, and jargon.
+- Alternatively, respell phonetically in plain text: "Kay-lith" for Caelith.
+- Write numbers, dates, and units the way they should be spoken ("twenty
+  twenty-six", "three point five kilometers"). Space out acronyms that should be
+  spelled letter by letter ("H Q").
+
+MOOD &amp; EMOTION (KOKORO)
+- Kokoro has no emotion tags. Convey mood through word choice, rhythm, and
+  punctuation: clipped sentences for tension, flowing clauses for calm, ellipses
+  for doubt.
+- Stage directions like (sighs) or &lt;laugh&gt; will be read aloud literally — never
+  include them in Kokoro scripts.
+
+ENGINE 2: ORPHEUS (acted dialogue — real emotion tags, slower)
+- Emotion tags are performed, not spoken. Available tags:
+  &lt;laugh&gt; &lt;chuckle&gt; &lt;sigh&gt; &lt;groan&gt; &lt;yawn&gt; &lt;gasp&gt; &lt;cough&gt; &lt;sniffle&gt;
+  Example: I cannot believe you said that. &lt;sigh&gt; Fine. Let's start over.
+- Place tags where the sound should happen, usually between sentences or clauses.
+  Use at most one or two per paragraph — they lose impact when overused.
+- Punctuation and pacing rules from Kokoro apply here too.
+- Kokoro's [word](+1) stress markers and /phoneme/ overrides do NOT work in
+  Orpheus — for tricky names, respell phonetically instead ("Kay-lith").</pre>
+      <button id="copyPromptBtn" class="secondary">Copy prompt</button>
+    </div>
+  </details>
+  <section class="history">
+    <h2>History</h2>
+    <div id="historyList"><p class="history-empty">Nothing generated yet.</p></div>
+  </section>
+</main>
+<script>
+  const textEl = document.getElementById("text");
+  const voiceEl = document.getElementById("voice");
+  const speedEl = document.getElementById("speed");
+  const speedValueEl = document.getElementById("speedValue");
+  const speakBtn = document.getElementById("speak");
+  const cancelBtn = document.getElementById("cancel");
+  const player = document.getElementById("player");
+  const statusEl = document.getElementById("status");
+  const progressWrap = document.getElementById("progressWrap");
+  const progressFill = document.getElementById("progressFill");
+  const progressPct = document.getElementById("progressPct");
+  const progressEta = document.getElementById("progressEta");
+
+  let currentJob = null;
+  const outputActions = document.getElementById("outputActions");
+  const downloadBtn = document.getElementById("downloadBtn");
+  const copyPathBtn = document.getElementById("copyPathBtn");
+  const outputPath = document.getElementById("outputPath");
+
+  function slugify(text) {
+    const slug = text.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "")
+      .split("-").slice(0, 5).join("-");
+    return (slug || "speech") + ".wav";
+  }
+
+  async function copyText(value, btn) {
+    try {
+      await navigator.clipboard.writeText(value);
+    } catch {
+      const ta = document.createElement("textarea");
+      ta.value = value;
+      document.body.appendChild(ta);
+      ta.select();
+      document.execCommand("copy");
+      ta.remove();
+    }
+    const original = btn.textContent;
+    btn.textContent = "Copied!";
+    setTimeout(() => { btn.textContent = original; }, 1200);
+  }
+
+  function showOutput(id, path, text) {
+    downloadBtn.href = `/library/${id}/audio`;
+    downloadBtn.download = slugify(text);
+    outputPath.textContent = path;
+    copyPathBtn.onclick = () => copyText(path, copyPathBtn);
+    outputActions.classList.add("visible");
+  }
+
+  const ENGINE_LABELS = { kokoro: "Kokoro", orpheus: "Orpheus — emote tags, slower" };
+  let voiceEngines = {};
+
+  fetch("/voices").then(r => r.json()).then(voices => {
+    const groups = {};
+    for (const v of voices) {
+      voiceEngines[v.id] = v.engine;
+      if (!groups[v.engine]) {
+        groups[v.engine] = document.createElement("optgroup");
+        groups[v.engine].label = ENGINE_LABELS[v.engine] || v.engine;
+        voiceEl.appendChild(groups[v.engine]);
+      }
+      const opt = document.createElement("option");
+      opt.value = v.id;
+      opt.textContent = v.label;
+      groups[v.engine].appendChild(opt);
+    }
+  });
+
+  voiceEl.addEventListener("change", () => {
+    const isOrpheus = voiceEngines[voiceEl.value] === "orpheus";
+    speedEl.disabled = isOrpheus;
+    speedEl.parentElement.style.opacity = isOrpheus ? 0.4 : 1;
+    speedEl.parentElement.title = isOrpheus ? "Speed is not supported by Orpheus" : "";
+  });
+
+  speedEl.addEventListener("input", () => {
+    speedValueEl.textContent = Number(speedEl.value).toFixed(1) + "×";
+  });
+
+  function setStatus(msg, isError) {
+    statusEl.textContent = msg;
+    statusEl.classList.toggle("error", !!isError);
+  }
+
+  function setProgress(pct, eta) {
+    progressFill.style.width = pct + "%";
+    progressPct.textContent = pct + "%";
+    progressEta.textContent = eta || "";
+  }
+
+  function resetUi() {
+    speakBtn.disabled = false;
+    cancelBtn.hidden = true;
+    progressWrap.classList.remove("visible");
+    currentJob = null;
+  }
+
+  const sleep = ms => new Promise(r => setTimeout(r, ms));
+
+  async function speak() {
+    const text = textEl.value.trim();
+    if (!text) { setStatus("Enter some text first.", true); return; }
+
+    speakBtn.disabled = true;
+    cancelBtn.hidden = false;
+    progressWrap.classList.add("visible");
+    outputActions.classList.remove("visible");
+    setProgress(0, "");
+    setStatus("Starting…");
+
+    try {
+      const res = await fetch("/tts", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ text, voice: voiceEl.value, speed: Number(speedEl.value) }),
+      });
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}));
+        throw new Error(err.detail || "Failed to start (" + res.status + ")");
+      }
+      const { job_id } = await res.json();
+      currentJob = job_id;
+      const startedAt = Date.now();
+      let finalStatus = null;
+
+      while (true) {
+        await sleep(400);
+        const sres = await fetch(`/tts/${job_id}/status`);
+        if (!sres.ok) throw new Error("Lost track of the job");
+        const s = await sres.json();
+
+        if (s.state === "error") throw new Error(s.error || "Generation failed");
+        if (s.state === "cancelled") { setStatus("Cancelled."); resetUi(); return; }
+
+        const pct = s.total_chars ? Math.round(100 * s.done_chars / s.total_chars) : 0;
+        let eta = "";
+        if (s.state === "running" && pct >= 5 && pct < 100) {
+          const elapsed = (Date.now() - startedAt) / 1000;
+          const remaining = Math.max(1, Math.round(elapsed * (100 - pct) / pct));
+          eta = "~" + (remaining >= 60 ? Math.round(remaining / 60) + "m" : remaining + "s") + " left";
+        }
+        setProgress(pct, eta);
+        setStatus(`Generating… segment ${s.done_segments} of ${s.total_segments}`);
+
+        if (s.state === "done") { finalStatus = s; break; }
+      }
+
+      setStatus("Loading audio…");
+      const ares = await fetch(`/tts/${job_id}/audio`);
+      if (!ares.ok) throw new Error("Failed to fetch audio");
+      const blob = await ares.blob();
+      if (player.src) URL.revokeObjectURL(player.src);
+      player.src = URL.createObjectURL(blob);
+      player.classList.add("visible");
+      player.play();
+      setProgress(100, "");
+      setStatus("");
+      showOutput(job_id, finalStatus.path, text);
+      loadHistory();
+    } catch (e) {
+      setStatus(e.message, true);
+    } finally {
+      resetUi();
+    }
+  }
+
+  async function cancel() {
+    if (!currentJob) return;
+    cancelBtn.disabled = true;
+    try { await fetch(`/tts/${currentJob}/cancel`, { method: "POST" }); } catch {}
+    cancelBtn.disabled = false;
+  }
+
+  const historyList = document.getElementById("historyList");
+
+  function fmtDuration(sec) {
+    if (sec >= 60) return Math.floor(sec / 60) + "m " + Math.round(sec % 60) + "s";
+    return Math.round(sec) + "s";
+  }
+
+  async function loadHistory() {
+    try {
+      const items = await (await fetch("/library")).json();
+      historyList.innerHTML = "";
+      if (!items.length) {
+        historyList.innerHTML = '<p class="history-empty">Nothing generated yet.</p>';
+        return;
+      }
+      for (const item of items) {
+        const div = document.createElement("div");
+        div.className = "history-item";
+
+        const textDiv = document.createElement("div");
+        textDiv.className = "history-text";
+        textDiv.textContent = item.text;
+
+        const meta = document.createElement("div");
+        meta.className = "history-meta";
+        const when = new Date(item.created * 1000).toLocaleString([], {
+          month: "short", day: "numeric", hour: "numeric", minute: "2-digit",
+        });
+        const info = document.createElement("span");
+        info.textContent = `${when} · ${item.voice} · ${fmtDuration(item.duration)}`;
+        const spacer = document.createElement("span");
+        spacer.className = "spacer";
+
+        const playBtn = document.createElement("button");
+        playBtn.textContent = "Play";
+        playBtn.onclick = () => {
+          if (player.src && player.src.startsWith("blob:")) URL.revokeObjectURL(player.src);
+          player.src = `/library/${item.id}/audio`;
+          player.classList.add("visible");
+          player.play();
+        };
+
+        const loadBtn = document.createElement("button");
+        loadBtn.textContent = "Load text";
+        loadBtn.className = "secondary";
+        loadBtn.onclick = () => {
+          textEl.value = item.text;
+          const opt = [...voiceEl.options].find(o => o.value === item.voice);
+          if (opt) voiceEl.value = item.voice;
+          textEl.focus();
+          window.scrollTo({ top: 0, behavior: "smooth" });
+        };
+
+        const dlLink = document.createElement("a");
+        dlLink.textContent = "Download";
+        dlLink.className = "btn small";
+        dlLink.href = `/library/${item.id}/audio`;
+        dlLink.download = slugify(item.text);
+
+        const copyBtn = document.createElement("button");
+        copyBtn.textContent = "Copy path";
+        copyBtn.className = "secondary";
+        copyBtn.onclick = () => copyText(item.path, copyBtn);
+
+        const delBtn = document.createElement("button");
+        delBtn.textContent = "Delete";
+        delBtn.className = "secondary";
+        delBtn.onclick = async () => {
+          await fetch(`/library/${item.id}`, { method: "DELETE" });
+          loadHistory();
+        };
+
+        meta.append(info, spacer, playBtn, dlLink, copyBtn, loadBtn, delBtn);
+        div.append(textDiv, meta);
+        historyList.appendChild(div);
+      }
+    } catch {
+      /* history is non-critical; leave the list as-is */
+    }
+  }
+
+  const copyPromptBtn = document.getElementById("copyPromptBtn");
+  copyPromptBtn.addEventListener("click", () =>
+    copyText(document.getElementById("cheatPrompt").textContent, copyPromptBtn));
+
+  speakBtn.addEventListener("click", speak);
+  cancelBtn.addEventListener("click", cancel);
+  textEl.addEventListener("keydown", e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === "Enter") speak();
+  });
+  loadHistory();
+</script>
+</body>
+</html>
